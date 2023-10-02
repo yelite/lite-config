@@ -144,6 +144,33 @@ toplevel @ {
         '';
       };
 
+      systemModule = mkOption {
+        type = types.path;
+        description = ''
+          The system module to be imported by all hosts.
+        '';
+      };
+
+      homeModule = mkOption {
+        type = types.nullOr types.path;
+        default = null;
+        description = ''
+          The home manager module to be imported by all hosts.
+        '';
+      };
+
+      hostModuleDir = mkOption {
+        type = types.path;
+        description = ''
+          The directory that contains host modules. Module at
+          `''${hostMouduleDir}/''${hostName}` will be imported in
+          the configuration of host `hostName` by default.
+
+          The actual host module can be overridden in
+          {option}`lite-system.hosts.<hostName>.hostModule`.
+        '';
+      };
+
       builder = mkOption {
         type = builderOptionType;
         default = {};
@@ -155,23 +182,17 @@ toplevel @ {
         '';
       };
 
-      systemModule = mkOption {
-        description = ''
-          The system module to be imported by all system configurations.
-        '';
+      homeManagerFlake = mkOption {
         type = types.path;
-      };
-
-      hostModuleDir = mkOption {
-        description = ''
-          The directory that contains host modules. Module at
-          `''${hostMouduleDir}/''${hostName}` will be imported in
-          the configuration for host `hostName` by default.
-
-          The actual host module can be overridden in
-          {option}`lite-system.hosts.<hostName>.hostModule`.
+        default = inputs.home-manager;
+        defaultText = literalExpression ''
+          inputs.home-manager
         '';
-        type = types.path;
+        description = ''
+          The home-manager flake to use.
+          You only need to set this if home manager isn't named as `home-manager` in your flake inputs.
+          This has no effect if {option}`lite-system.homeModule` is null.
+        '';
       };
     };
   };
@@ -183,18 +204,38 @@ toplevel @ {
         if hostConfig.hostModule == null
         then "${cfg.hostModuleDir}/${hostName}"
         else hostConfig.hostModule;
-      builderArgs = {
-        specialArgs = {
-          inherit inputs hostPlatform;
-        };
-        modules = [
+      homeManagerSystemModule =
+        if hostPlatform.isLinux
+        then inputs.home-manager.nixosModule
+        else if hostPlatform.isDarwin
+        then inputs.home-manager.darwinModule
+        else throw "Not supported system type ${hostPlatform.system}";
+      specialArgs = {
+        inherit inputs hostPlatform;
+      };
+      modules =
+        [
           hostModule
           cfg.systemModule
           {
             nixpkgs.pkgs = liteSystemPkgs;
             networking.hostName = hostName;
           }
+        ]
+        ++ lib.optionals (cfg.homeModule != null) [
+          homeManagerSystemModule
+          {
+            home-manager = {
+              sharedModules = [
+                cfg.homeModule
+              ];
+              useGlobalPkgs = true;
+              extraSpecialArgs = specialArgs;
+            };
+          }
         ];
+      builderArgs = {
+        inherit specialArgs modules;
       };
     in
       if hostPlatform.isLinux
