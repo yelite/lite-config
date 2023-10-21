@@ -1,7 +1,6 @@
 toplevel @ {
   inputs,
   lib,
-  flake-parts-lib,
   withSystem,
   ...
 }: let
@@ -16,16 +15,15 @@ toplevel @ {
     ;
   inherit
     (lib)
+    mkIf
     mkOption
+    mkDefault
+    mkMerge
     mapAttrs
     types
     recursiveUpdateUntil
     isDerivation
     literalExpression
-    ;
-  inherit
-    (flake-parts-lib)
-    mkPerSystemOption
     ;
   cfg = toplevel.config.lite-system;
 
@@ -70,7 +68,7 @@ toplevel @ {
             ]
           '';
       };
-      exportPackagesInOverlays = mkOption {
+      exportOverlayPackages = mkOption {
         default = true;
         type = types.bool;
         description = ''
@@ -81,7 +79,7 @@ toplevel @ {
         default = true;
         type = types.bool;
         description = ''
-          Whether the `pkgs` used in lite-system should be set as the `pkgs` arg for
+          Whether the nixpkgs used in lite-system should be set as the `pkgs` arg for
           perSystem modules.
         '';
       };
@@ -101,7 +99,7 @@ toplevel @ {
           '';
       };
       hostModule = mkOption {
-        type = types.nullOr types.path;
+        type = types.nullOr types.deferredModule;
         default = null;
         description = ''
           The host module that is imported by this host.
@@ -145,14 +143,14 @@ toplevel @ {
       };
 
       systemModule = mkOption {
-        type = types.path;
+        type = types.nullOr types.deferredModule;
         description = ''
           The system module to be imported by all hosts.
         '';
       };
 
       homeModule = mkOption {
-        type = types.nullOr types.path;
+        type = types.nullOr types.deferredModule;
         default = null;
         description = ''
           The home manager module to be imported by all hosts.
@@ -194,8 +192,18 @@ toplevel @ {
           This has no effect if {option}`lite-system.homeModule` is null.
         '';
       };
+
+      homeConfigurations = mkOption {
+        type = types.attrsOf types.deferredModule;
+        default = {};
+        description = ''
+          Per-user Home Manager module used for exporting homeConfigurations for systems other than NixOS and nix-darwin.
+        '';
+      };
     };
   };
+
+  useHomeManager = cfg.homeModule != null;
 
   makeSystemConfig = hostName: hostConfig:
     withSystem hostConfig.system ({liteSystemPkgs, ...}: let
@@ -206,9 +214,9 @@ toplevel @ {
         else hostConfig.hostModule;
       homeManagerSystemModule =
         if hostPlatform.isLinux
-        then inputs.home-manager.nixosModule
+        then cfg.homeManagerFlake.nixosModule
         else if hostPlatform.isDarwin
-        then inputs.home-manager.darwinModule
+        then cfg.homeManagerFlake.darwinModule
         else throw "Not supported system type ${hostPlatform.system}";
       specialArgs = {
         inherit inputs hostPlatform;
@@ -218,13 +226,15 @@ toplevel @ {
           hostModule
           cfg.systemModule
           {
+            _file = ./.;
             nixpkgs.pkgs = liteSystemPkgs;
             networking.hostName = hostName;
           }
         ]
-        ++ lib.optionals (cfg.homeModule != null) [
+        ++ lib.optionals useHomeManager [
           homeManagerSystemModule
           {
+            _file = ./.;
             home-manager = {
               sharedModules = [
                 cfg.homeModule
@@ -256,6 +266,46 @@ toplevel @ {
     overlay = lib.composeManyExtensions cfg.nixpkgs.overlays;
   in
     attrNames (overlay null null);
+
+  mkHomeConfiguration = pkgs: username: module:
+    cfg.homeManagerFlake.lib.homeManagerConfiguration {
+      inherit pkgs;
+      modules = [
+        cfg.homeModule
+        module
+        ({config, ...}: let
+          hostPlatform = pkgs.stdenv.hostPlatform;
+          defaultHome =
+            if hostPlatform.isLinux
+            then "/home/${config.home.username}"
+            else if hostPlatform.isDarwin
+            then "/Users/${config.home.username}"
+            else throw "Not supported system type ${hostPlatform.system}";
+        in {
+          _file = ./.;
+          home.username = mkDefault username;
+          home.homeDirectory = mkDefault defaultHome;
+        })
+      ];
+
+      extraSpecialArgs = {
+        inherit inputs;
+        hostPlatform = pkgs.stdenv.hostPlatform;
+      };
+    };
+  createHomeConfigurations = pkgs:
+    pkgs.stdenv.mkDerivation {
+      name = "homeConfigurations";
+      version = "1.0";
+      nobuildPhase = ''
+        echo
+        echo "This derivation is a dummy package to ground homeConfigurations under the flake outputs."
+        echo "It is not meant to be built, aborting";
+        echo
+        exit 1
+      '';
+      passthru = mapAttrs (mkHomeConfiguration pkgs) cfg.homeConfigurations;
+    };
 in {
   options = {
     lite-system = mkOption {
@@ -265,8 +315,15 @@ in {
         The config for lite-system.
       '';
     };
+  };
 
-    perSystem = mkPerSystemOption ({
+  config = {
+    # Setting the systems to cover all configured hosts
+    systems = lib.unique (attrValues (mapAttrs (_: v: v.system) cfg.hosts));
+
+    flake = systemAttrset;
+
+    perSystem = {
       system,
       liteSystemPkgs,
       ...
@@ -284,28 +341,28 @@ in {
         _module.args.liteSystemPkgs = lib.mkOptionDefault selectedPkgs;
 
         packages = let
-          selectPkg = name: {
-            inherit name;
-            value = liteSystemPkgs.${name} or null;
+          overlayPackages = let
+            selectPkg = name: {
+              inherit name;
+              value = liteSystemPkgs.${name} or null;
+            };
+            # Some overlay provides non-derivation at the top level, which
+            # breaks `nix flake show`. Those packages are usually not interesting
+            # from system configuration's perspective. Therefore they are filtered
+            # out.
+            isValidPackageEntry = e: isDerivation e.value;
+            overlayPackageEntries = map selectPkg overlayPackageNames;
+            validOverlayPackageEntries = filter isValidPackageEntry overlayPackageEntries;
+          in
+            listToAttrs validOverlayPackageEntries;
+
+          homeManagerPackages = {
+            home-manager = cfg.homeManagerFlake.packages.${system}.default;
+            homeConfigurations = createHomeConfigurations liteSystemPkgs;
           };
-          # Some overlay provides non-derivation at the top level, which
-          # breaks `nix flake show`. Those packages are usually not interesting
-          # from system configuration's perspective. Therefore they are filtered
-          # out.
-          isValidPackageEntry = e: isDerivation e.value;
-          overlayPackageEntries = map selectPkg overlayPackageNames;
-          validOverlayPackageEntries = filter isValidPackageEntry overlayPackageEntries;
-          overlayPackages = listToAttrs validOverlayPackageEntries;
         in
-          lib.mkIf cfg.nixpkgs.exportPackagesInOverlays overlayPackages;
+          mkMerge [(mkIf cfg.nixpkgs.exportOverlayPackages overlayPackages) (mkIf useHomeManager homeManagerPackages)];
       };
-    });
-  };
-
-  config = {
-    # Setting the systems to cover all configured hosts
-    systems = lib.unique (attrValues (mapAttrs (_: v: v.system) cfg.hosts));
-
-    flake = systemAttrset;
+    };
   };
 }
