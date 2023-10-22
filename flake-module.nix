@@ -33,20 +33,19 @@ toplevel @ {
       nixpkgs = mkOption {
         type = types.path;
         default = inputs.nixpkgs;
-        defaultText = literalExpression ''
-          inputs.nixpkgs
-        '';
+        defaultText = literalExpression "inputs.nixpkgs";
         description = ''
-          The nixpkgs flake to use. By default, it uses the flake input 'nixpkgs'.
-          You only need to specify this if you want to use a different nixpkgs or
-          nixpkgs is under a different name in your flake inputs.
+          The nixpkgs flake to use.
+
+          This option needs to set if the nixpkgs that you want to use is under a different name
+          in flake inputs.
         '';
       };
       config = mkOption {
         default = {};
         type = types.attrs;
         description = ''
-          The configuration to apply to nixpkgs.
+          The configuration of the Nix Packages collection.
         '';
         example =
           literalExpression
@@ -58,7 +57,7 @@ toplevel @ {
         default = [];
         type = types.uniq (types.listOf overlayType);
         description = ''
-          List of overlays to apply to nixpkgs.
+          List of overlays to use with the Nix Packages collection.
         '';
         example =
           literalExpression
@@ -72,7 +71,7 @@ toplevel @ {
         default = true;
         type = types.bool;
         description = ''
-          Whether packages in the overlays should be exported as packages of the flake.
+          Whether packages in the overlays should be exported as packages.
         '';
       };
       setPerSystemPkgs = mkOption {
@@ -80,7 +79,7 @@ toplevel @ {
         type = types.bool;
         description = ''
           Whether the nixpkgs used in lite-system should be set as the `pkgs` arg for
-          perSystem modules.
+          the perSystem module.
         '';
       };
     };
@@ -119,7 +118,7 @@ toplevel @ {
         '';
         description = ''
           The builder function for darwin system. This option should be set
-          when the `nix-darwin` flake is under a different name as flake input.
+          if the `nix-darwin` flake is under a different name in flake inputs.
         '';
       };
     };
@@ -130,7 +129,8 @@ toplevel @ {
         type = nixpkgsOptionType;
         default = {};
         description = ''
-          Config for nixpkgs used by lite-system.
+          Config about the nixpkgs used by lite-system.
+          All configurations produced by lite-system will use the nixpkgs specified in this option.
         '';
       };
 
@@ -138,7 +138,7 @@ toplevel @ {
         type = types.attrsOf hostConfigType;
         default = {};
         description = ''
-          Host configurations
+          Host configurations.
         '';
       };
 
@@ -164,7 +164,7 @@ toplevel @ {
           `''${hostMouduleDir}/''${hostName}` will be imported in
           the configuration of host `hostName` by default.
 
-          The actual host module can be overridden in
+          The host module used by a host can be overridden in
           {option}`lite-system.hosts.<hostName>.hostModule`.
         '';
       };
@@ -188,7 +188,8 @@ toplevel @ {
         '';
         description = ''
           The home-manager flake to use.
-          You only need to set this if home manager isn't named as `home-manager` in your flake inputs.
+          This should be set if home-manager isn't named as `home-manager` in flake inputs.
+
           This has no effect if {option}`lite-system.homeModule` is null.
         '';
       };
@@ -197,8 +198,25 @@ toplevel @ {
         type = types.attrsOf types.deferredModule;
         default = {};
         description = ''
-          Per-user Home Manager module used for exporting homeConfigurations for systems other than NixOS and nix-darwin.
+          Per-user Home Manager module used for exporting homeConfigurations to be used
+          by systems other than NixOS and nix-darwin.
+
+          The exported homeConfigurations will import both `lite-system.homeModule` and the value in
+          this attrset.
+
+          This has no effect if {option}`lite-system.homeModule` is null.
         '';
+        example =
+          literalExpression
+          ''
+            {
+              joe = {
+                myConfig = {
+                  neovim.enable = true;
+                };
+              };
+            }
+          '';
       };
     };
   };
@@ -217,7 +235,7 @@ toplevel @ {
         then cfg.homeManagerFlake.nixosModule
         else if hostPlatform.isDarwin
         then cfg.homeManagerFlake.darwinModule
-        else throw "Not supported system type ${hostPlatform.system}";
+        else throw "System type ${hostPlatform.system} not supported.";
       specialArgs = {
         inherit inputs hostPlatform;
       };
@@ -254,7 +272,7 @@ toplevel @ {
       }
       else if hostPlatform.isDarwin
       then {darwinConfigurations.${hostName} = cfg.builder.darwin builderArgs;}
-      else throw "Not supported system type ${hostPlatform.system}");
+      else throw "System type ${hostPlatform.system} not supported.");
   systemAttrset = let
     # Merge the first two levels
     mergeSysConfig = a: b: recursiveUpdateUntil (path: _: _: (length path) > 2) a b;
@@ -280,7 +298,7 @@ toplevel @ {
             then "/home/${config.home.username}"
             else if hostPlatform.isDarwin
             then "/Users/${config.home.username}"
-            else throw "Not supported system type ${hostPlatform.system}";
+            else throw "System type ${hostPlatform.system} not supported.";
         in {
           _file = ./.;
           home.username = mkDefault username;
@@ -299,7 +317,7 @@ toplevel @ {
       version = "1.0";
       nobuildPhase = ''
         echo
-        echo "This derivation is a dummy package to ground homeConfigurations under the flake outputs."
+        echo "This derivation is a dummy package to group homeConfigurations under the flake outputs."
         echo "It is not meant to be built, aborting";
         echo
         exit 1
@@ -361,7 +379,10 @@ in {
             homeConfigurations = createHomeConfigurations liteSystemPkgs;
           };
         in
-          mkMerge [(mkIf cfg.nixpkgs.exportOverlayPackages overlayPackages) (mkIf useHomeManager homeManagerPackages)];
+          mkMerge [
+            (mkIf cfg.nixpkgs.exportOverlayPackages overlayPackages)
+            (mkIf useHomeManager homeManagerPackages)
+          ];
       };
     };
   };

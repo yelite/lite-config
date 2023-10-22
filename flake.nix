@@ -1,5 +1,5 @@
 {
-  description = "A simple and opinionated way to define system configurations with `flake-parts`.";
+  description = "A flake module to help build NixOS, nix-darwin or Home Manager configurations.";
   outputs = {...}: {
     flakeModule = ./flake-module.nix;
   };
