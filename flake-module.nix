@@ -354,23 +354,23 @@ in {
           config = cfg.nixpkgs.config;
         };
       in {
-        _module.args.pkgs = lib.mkIf cfg.nixpkgs.setPerSystemPkgs selectedPkgs;
         # Make this OptionDefault so that users are able to override this pkg.
         _module.args.liteSystemPkgs = lib.mkOptionDefault selectedPkgs;
 
+        _module.args.pkgs = lib.mkIf cfg.nixpkgs.setPerSystemPkgs liteSystemPkgs;
+
         packages = let
           overlayPackages = let
-            selectPkg = name: {
+            getPackage = name: {
               inherit name;
               value = liteSystemPkgs.${name} or null;
             };
+            overlayPackageEntries = map getPackage overlayPackageNames;
             # Some overlay provides non-derivation at the top level, which
             # breaks `nix flake show`. Those packages are usually not interesting
             # from system configuration's perspective. Therefore they are filtered
             # out.
-            isValidPackageEntry = e: isDerivation e.value;
-            overlayPackageEntries = map selectPkg overlayPackageNames;
-            validOverlayPackageEntries = filter isValidPackageEntry overlayPackageEntries;
+            validOverlayPackageEntries = filter (e: isDerivation e.value) overlayPackageEntries;
           in
             listToAttrs validOverlayPackageEntries;
 
