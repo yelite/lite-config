@@ -70,14 +70,24 @@ A minimal example:
 
 ## Why flake?
 
-WIP
+From [https://nixos.wiki/wiki/Flakes](),
+
+> Flake improves reproducibility, composability and usability in the Nix ecosystem.
+
+When it comes to building system configurations, the most significant advantage
+offered by flakes is reproducibility. By utilizing flakes, it's ensured that environments
+across all systems achieve the highest degree of consistency possible.
 
 ## Why flake module (flake-parts)?
+
+From [https://github.com/hercules-ci/flake-parts#why-modules](),
 
 > Flakes are configuration. The module system lets you refactor configuration into modules that can be shared.
 > It reduces the proliferation of custom Nix glue code, similar to what the module system has done for NixOS configurations.
 
-From [https://github.com/hercules-ci/flake-parts#why-modules]().
+While the flexibility provided by flake-parts may not provide significant advantages for
+creating system configurations, it will shine if there is need to add other kinds of things
+into the same flake.
 
 ## Why lite-system?
 
