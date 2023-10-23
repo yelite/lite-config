@@ -114,3 +114,6 @@ The features offered by flake and flake-parts are rather primitive.
 `lite-system` provides features that are commonly needed when building system configurations.
 Since it's a flake module, it can also be easily customized and overridden when users
 have more complex tasks to accomplish within the flake.
+
+# Full Example and Options
+WIP
