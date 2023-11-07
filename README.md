@@ -1,12 +1,12 @@
 # lite-system
 
 `lite-system` offers a convinient appraoch to build NixOS, nix-darwin and Home Manager configurations,
-and create a consistent environment across different devices. It addresses common patterns
-for creating personal system configurations, which includes:
+to create a consistent environment across different devices. It addresses common patterns
+when creating personal system configurations, which includes:
 
 1. Configure `pkgs` with overlays and config, and use it across all system configurations.
 2. Build NixOS and nix-darwin configurations in a unified way.
-3. Export standalone `homeConfigurations` for use in non-NixOS Linux distributions.
+3. Export standalone `homeConfigurations` to be used in non-NixOS Linux distributions.
 4. Export packages from overlays for easy debugging.
 
 An example:
@@ -73,17 +73,16 @@ An example:
 }
 ```
 
-`lite-system` assumes there is a system module that's imported by all hosts,
-a set of per-host modules to customize each host, and optionally a home manager module
-used by all hosts.
-
-To enable the creation of unified modules for both NixOS and nix-darwin,
-`lite-system` adds `hostPlatform` as special arg into the module system.
-This allows modules to be conditionally imported on system type.
-
 `lite-system` aims to be light weight, as the name suggests. It offers only a fundamental
 framework for building flakes of system configurations. Users still need to write
 NixOS (or nix-darwin) modules and home manager modules on their own, as in vanilla flake.
+
+It requires a system module shared across all hosts, a set of per-host modules to
+customize each host, and optionally a home manager module used by all hosts.
+
+To enable the creation of unified modules for both NixOS and nix-darwin,
+`lite-system` adds `hostPlatform` as a special arg to the module system.
+This allows modules to be conditionally imported based on system type.
 
 # Why?
 
