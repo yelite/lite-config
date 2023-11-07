@@ -1,5 +1,7 @@
 # lite-system
 
+[![flakestry.dev](https://flakestry.dev/api/badge/flake/github/yelite/lite-system)](https://flakestry.dev/flake/github/yelite/lite-system/0.1.0)
+
 `lite-system` offers a convinient appraoch to build NixOS, nix-darwin and Home Manager configurations,
 to create a consistent environment across different devices. It addresses common patterns
 when creating personal system configurations, which includes:
