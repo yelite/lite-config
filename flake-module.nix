@@ -78,7 +78,7 @@ toplevel @ {
         default = true;
         type = types.bool;
         description = ''
-          Whether the nixpkgs used in lite-system should be set as the `pkgs` arg for
+          Whether the nixpkgs used in lite-system should also be set as the `pkgs` arg for
           the perSystem module.
         '';
       };
@@ -201,7 +201,7 @@ toplevel @ {
           Per-user Home Manager module used for exporting homeConfigurations to be used
           by systems other than NixOS and nix-darwin.
 
-          The exported homeConfigurations will import both `lite-system.homeModule` and the value in
+          The exported homeConfigurations will import both `lite-system.homeModule` and the value of
           this attrset.
 
           This has no effect if {option}`lite-system.homeModule` is null.

@@ -1,15 +1,15 @@
 # lite-system
 
-`lite-system` offers a convinient method for building NixOS, nix-darwin and Home Manager configurations,
-and creating a consistent environment across different devices. It addresses common patterns
+`lite-system` offers a convinient appraoch to build NixOS, nix-darwin and Home Manager configurations,
+and create a consistent environment across different devices. It addresses common patterns
 for creating personal system configurations, which includes:
 
-1. Configure `pkgs` and use it across all system configurations.
+1. Configure `pkgs` with overlays and config, and use it across all system configurations.
 2. Build NixOS and nix-darwin configurations in a unified way.
 3. Export standalone `homeConfigurations` for use in non-NixOS Linux distributions.
 4. Export packages from overlays for easy debugging.
 
-A minimal example:
+An example:
 
 ```nix
 {
@@ -115,5 +115,80 @@ The features offered by flake and flake-parts are rather primitive.
 Since it's a flake module, it can also be easily customized and overridden when users
 have more complex tasks to accomplish within the flake.
 
-# Full Example and Options
-WIP
+# Full example
+
+```nix
+{
+  outputs = inputs @ {flake-parts, ...}:
+    flake-parts.lib.mkFlake {inherit inputs;} ({inputs, ...}: {
+      imports = [
+        inputs.lite-system.flakeModule
+      ];
+
+      config.lite-system = {
+        # Configure the nixpkgs that is used in all configurations created by `lite-system`.
+        nixpkgs = {
+          # The nixpkgs flake to use. Default to `inputs.nixpkgs`.
+          # This option needs to set if the nixpkgs that you want to use is under a
+          # different name in flake inputs.
+          nixpkgs = inputs.nixpkgs;
+          # nixpkgs global config https://nixos.org/manual/nixpkgs/stable/#chap-packageconfig
+          config = {};
+          # List of overlays to use with the nixpkgs.
+          overlays = [];
+          # Whether packages in the overlays should be exported as packages of this flake.
+          exportOverlayPackages = true;
+          # Whether the nixpkgs used in lite-system should also be set as the `pkgs` arg for
+          # the perSystem module.
+          setPerSystemPkgs = true;
+        };
+
+        # The home-manager flake to use.
+        # This should be set if home-manager isn't named as `home-manager` in flake inputs.
+        # This has no effect if {option}`lite-system.homeModule` is null.
+        homeManagerFlake = inputs.home-manager;
+
+        builder = {
+          # The builder function for darwin system.
+          # Default to `inputs.nix-darwin.lib.darwinSystem`.
+          # This option should be set if the `nix-darwin` flake is under a different name
+          # in flake inputs.
+          darwin = inputs.nix-darwin.lib.darwinSystem;
+        };
+
+        # The system module will be imported for all host configurations.
+        systemModule = ./system;
+        # The home module is a Home Manager module, used by all host configurations.
+        homeModule = ./home;
+        # This directory contains per-host system module.
+        hostModuleDir = ./hosts;
+
+        hosts = {
+          host-name = {
+            system = "x86_64-linux";
+            # Overrides the default host module based on `hostModuleDir`.
+            hostModule = ./hosts/common-desktop
+          };
+        };
+
+        # Per-user Home Manager module used for exporting homeConfigurations to be used
+        # by systems other than NixOS and nix-darwin.
+        #
+        # The exported homeConfigurations will import both `lite-system.homeModule` and the value of
+        # this attrset.
+        #
+        # This has no effect if `lite-system.homeModule` is null.
+        homeConfigurations = {
+          joe = {
+            myConfig = {
+              neovim.enable = true;
+            };
+          };
+        };
+      };
+    });
+}
+```
+
+[https://github.com/yelite/system-config](https://github.com/yelite/system-config) is
+a practical, real-world example on how to use `lite-system`.
