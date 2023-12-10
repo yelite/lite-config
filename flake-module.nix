@@ -280,11 +280,6 @@ toplevel @ {
   in
     foldl' mergeSysConfig {} sysConfigAttrsets;
 
-  overlayPackageNames = let
-    overlay = lib.composeManyExtensions cfg.nixpkgs.overlays;
-  in
-    attrNames (overlay null null);
-
   mkHomeConfiguration = pkgs: username: module:
     cfg.homeManagerFlake.lib.homeManagerConfiguration {
       inherit pkgs;
@@ -361,11 +356,17 @@ in {
 
         packages = let
           overlayPackages = let
-            getPackage = name: {
-              inherit name;
-              value = liteSystemPkgs.${name} or null;
-            };
-            overlayPackageEntries = map getPackage overlayPackageNames;
+            overlayFn = lib.composeManyExtensions liteSystemPkgs.overlays;
+            overlayPackageNames =
+              # Here we use the final pkgs as both prev and final arg for the overlay function.
+              # This should be fine because we only care about attr names.
+              attrNames (overlayFn liteSystemPkgs liteSystemPkgs);
+            overlayPackageEntries =
+              map (name: {
+                inherit name;
+                value = liteSystemPkgs.${name} or null;
+              })
+              overlayPackageNames;
             # Some overlay provides non-derivation at the top level, which
             # breaks `nix flake show`. Those packages are usually not interesting
             # from system configuration's perspective. Therefore they are filtered
