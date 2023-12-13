@@ -90,7 +90,7 @@ This allows modules to be conditionally imported based on system type.
 
 ## Why flake?
 
-From [https://nixos.wiki/wiki/Flakes](),
+From [https://nixos.wiki/wiki/Flakes](https://nixos.wiki/wiki/Flakes),
 
 > Flake improves reproducibility, composability and usability in the Nix ecosystem.
 
@@ -100,7 +100,7 @@ across all systems achieve the highest degree of consistency possible.
 
 ## Why flake module (flake-parts)?
 
-From [https://github.com/hercules-ci/flake-parts#why-modules](),
+From [https://github.com/hercules-ci/flake-parts#why-modules](https://github.com/hercules-ci/flake-parts#why-modules),
 
 > Flakes are configuration. The module system lets you refactor configuration into modules that can be shared.
 > It reduces the proliferation of custom Nix glue code, similar to what the module system has done for NixOS configurations.
