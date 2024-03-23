@@ -232,9 +232,9 @@ toplevel @ {
         else hostConfig.hostModule;
       homeManagerSystemModule =
         if hostPlatform.isLinux
-        then cfg.homeManagerFlake.nixosModule
+        then cfg.homeManagerFlake.nixosModules.default
         else if hostPlatform.isDarwin
-        then cfg.homeManagerFlake.darwinModule
+        then cfg.homeManagerFlake.darwinModules.default
         else throw "System type ${hostPlatform.system} not supported.";
       specialArgs = {
         inherit inputs hostPlatform;
