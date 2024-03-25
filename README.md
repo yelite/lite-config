@@ -2,7 +2,7 @@
 
 [![flakestry.dev](https://flakestry.dev/api/badge/flake/github/yelite/lite-config)](https://flakestry.dev/flake/github/yelite/lite-config/0.2.0)
 
-> [!TIP]
+> [!NOTE]
 > lite-config is the new name of lite-system. This rename is to avoid confusion on the word 'system', 
 > which is commonly used to refer to platform string, like "x86_64-linux", in context of Nix.
 
