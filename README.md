@@ -1,8 +1,12 @@
-# lite-system
+# lite-config
 
-[![flakestry.dev](https://flakestry.dev/api/badge/flake/github/yelite/lite-system)](https://flakestry.dev/flake/github/yelite/lite-system/0.1.0)
+[![flakestry.dev](https://flakestry.dev/api/badge/flake/github/yelite/lite-config)](https://flakestry.dev/flake/github/yelite/lite-config/0.2.0)
 
-`lite-system` offers a convinient appraoch to build NixOS, nix-darwin and Home Manager configurations,
+> [!TIP]
+> lite-config is the new name of lite-system. This rename is to avoid confusion on the word 'system', 
+> which is commonly used to refer to platform string, like "x86_64-linux", in context of Nix.
+
+`lite-config` offers a convinient appraoch to build NixOS, nix-darwin and Home Manager configurations,
 to create a consistent environment across different devices. It addresses common patterns
 when creating personal system configurations, which includes:
 
@@ -18,7 +22,7 @@ An example:
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    lite-system.url = "github:yelite/lite-system";
+    lite-config.url = "github:yelite/lite-config";
     nix-darwin = {
       url = "github:lnl7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -31,11 +35,11 @@ An example:
   outputs = inputs @ {flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} ({inputs, ...}: {
       imports = [
-        inputs.lite-system.flakeModule
+        inputs.lite-config.flakeModule
       ];
 
-      config.lite-system = {
-        # Configure the nixpkgs that is used in all configurations created by `lite-system`.
+      config.lite-config = {
+        # Configure the nixpkgs that is used in all configurations created by `lite-config`.
         nixpkgs = {
           config = {
             allowUnfree = true;
@@ -75,7 +79,7 @@ An example:
 }
 ```
 
-`lite-system` aims to be light weight, as the name suggests. It offers only a fundamental
+`lite-config` aims to be light weight, as the name suggests. It offers only a fundamental
 framework for building flakes of system configurations. Users still need to write
 NixOS (or nix-darwin) modules and home manager modules on their own, as in vanilla flake.
 
@@ -83,7 +87,7 @@ It requires a system module shared across all hosts, a set of per-host modules t
 customize each host, and optionally a home manager module used by all hosts.
 
 To enable the creation of unified modules for both NixOS and nix-darwin,
-`lite-system` adds `hostPlatform` as a special arg to the module system.
+`lite-config` adds `hostPlatform` as a special arg to the module system.
 This allows modules to be conditionally imported based on system type.
 
 # Why?
@@ -109,10 +113,10 @@ While the flexibility provided by flake-parts may not provide significant advant
 creating system configurations, it comes in handy when there is need to integrate
 various other components within the same flake.
 
-## Why lite-system?
+## Why lite-config?
 
 The features offered by flake and flake-parts are rather primitive.
-`lite-system` provides features that are commonly needed when building system configurations.
+`lite-config` provides features that are commonly needed when building system configurations.
 Since it's a flake module, it can also be easily customized and overridden when users
 have more complex tasks to accomplish within the flake.
 
@@ -123,11 +127,11 @@ have more complex tasks to accomplish within the flake.
   outputs = inputs @ {flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} ({inputs, ...}: {
       imports = [
-        inputs.lite-system.flakeModule
+        inputs.lite-config.flakeModule
       ];
 
-      config.lite-system = {
-        # Configure the nixpkgs that is used in all configurations created by `lite-system`.
+      config.lite-config = {
+        # Configure the nixpkgs that is used in all configurations created by `lite-config`.
         nixpkgs = {
           # The nixpkgs flake to use. Default to `inputs.nixpkgs`.
           # This option needs to set if the nixpkgs that you want to use is under a
@@ -139,14 +143,14 @@ have more complex tasks to accomplish within the flake.
           overlays = [];
           # Whether packages in the overlays should be exported as packages of this flake.
           exportOverlayPackages = true;
-          # Whether the nixpkgs used in lite-system should also be set as the `pkgs` arg for
+          # Whether the nixpkgs used in lite-config should also be set as the `pkgs` arg for
           # the perSystem module.
           setPerSystemPkgs = true;
         };
 
         # The home-manager flake to use.
         # This should be set if home-manager isn't named as `home-manager` in flake inputs.
-        # This has no effect if {option}`lite-system.homeModule` is null.
+        # This has no effect if {option}`lite-config.homeModule` is null.
         homeManagerFlake = inputs.home-manager;
 
         builder = {
@@ -175,10 +179,10 @@ have more complex tasks to accomplish within the flake.
         # Per-user Home Manager module used for exporting homeConfigurations to be used
         # by systems other than NixOS and nix-darwin.
         #
-        # The exported homeConfigurations will import both `lite-system.homeModule` and the value of
+        # The exported homeConfigurations will import both `lite-config.homeModule` and the value of
         # this attrset.
         #
-        # This has no effect if `lite-system.homeModule` is null.
+        # This has no effect if `lite-config.homeModule` is null.
         homeConfigurations = {
           joe = {
             myConfig = {
@@ -192,4 +196,4 @@ have more complex tasks to accomplish within the flake.
 ```
 
 [https://github.com/yelite/system-config](https://github.com/yelite/system-config) is
-a practical, real-world example on how to use `lite-system`.
+a practical, real-world example on how to use `lite-config`.

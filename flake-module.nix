@@ -25,7 +25,7 @@ toplevel @ {
     isDerivation
     literalExpression
     ;
-  cfg = toplevel.config.lite-system;
+  cfg = toplevel.config.lite-config;
 
   overlayType = types.uniq (types.functionTo (types.functionTo (types.lazyAttrsOf types.unspecified)));
   nixpkgsOptionType = types.submodule {
@@ -78,7 +78,7 @@ toplevel @ {
         default = true;
         type = types.bool;
         description = ''
-          Whether the nixpkgs used in lite-system should also be set as the `pkgs` arg for
+          Whether the nixpkgs used in lite-config should also be set as the `pkgs` arg for
           the perSystem module.
         '';
       };
@@ -102,7 +102,7 @@ toplevel @ {
         default = null;
         description = ''
           The host module that is imported by this host.
-          If null, the module at "''${{option}`lite-system.hostModuleDir`}/''${hostName}"
+          If null, the module at "''${{option}`lite-config.hostModuleDir`}/''${hostName}"
           will be used as hostModule.
         '';
       };
@@ -123,14 +123,14 @@ toplevel @ {
       };
     };
   };
-  liteSystemType = types.submodule {
+  liteConfigType = types.submodule {
     options = {
       nixpkgs = mkOption {
         type = nixpkgsOptionType;
         default = {};
         description = ''
-          Config about the nixpkgs used by lite-system.
-          All configurations produced by lite-system will use the nixpkgs specified in this option.
+          Config about the nixpkgs used by lite-config.
+          All configurations produced by lite-config will use the nixpkgs specified in this option.
         '';
       };
 
@@ -165,7 +165,7 @@ toplevel @ {
           the configuration of host `hostName` by default.
 
           The host module used by a host can be overridden in
-          {option}`lite-system.hosts.<hostName>.hostModule`.
+          {option}`lite-config.hosts.<hostName>.hostModule`.
         '';
       };
 
@@ -176,7 +176,7 @@ toplevel @ {
           Options about system configuration builder.
 
           By default, the builder for MacOS is `inputs.nix-darwin.lib.darwinSystem`
-          and the builder for NixOS is {option}`lite-system.nixpkgs.nixpkgs.lib.nixosSystem`.
+          and the builder for NixOS is {option}`lite-config.nixpkgs.nixpkgs.lib.nixosSystem`.
         '';
       };
 
@@ -190,7 +190,7 @@ toplevel @ {
           The home-manager flake to use.
           This should be set if home-manager isn't named as `home-manager` in flake inputs.
 
-          This has no effect if {option}`lite-system.homeModule` is null.
+          This has no effect if {option}`lite-config.homeModule` is null.
         '';
       };
 
@@ -201,10 +201,10 @@ toplevel @ {
           Per-user Home Manager module used for exporting homeConfigurations to be used
           by systems other than NixOS and nix-darwin.
 
-          The exported homeConfigurations will import both `lite-system.homeModule` and the value of
+          The exported homeConfigurations will import both `lite-config.homeModule` and the value of
           this attrset.
 
-          This has no effect if {option}`lite-system.homeModule` is null.
+          This has no effect if {option}`lite-config.homeModule` is null.
         '';
         example =
           literalExpression
@@ -224,8 +224,8 @@ toplevel @ {
   useHomeManager = cfg.homeModule != null;
 
   makeSystemConfig = hostName: hostConfig:
-    withSystem hostConfig.system ({liteSystemPkgs, ...}: let
-      hostPlatform = liteSystemPkgs.stdenv.hostPlatform;
+    withSystem hostConfig.system ({liteConfigPkgs, ...}: let
+      hostPlatform = liteConfigPkgs.stdenv.hostPlatform;
       hostModule =
         if hostConfig.hostModule == null
         then "${cfg.hostModuleDir}/${hostName}"
@@ -245,7 +245,7 @@ toplevel @ {
           cfg.systemModule
           {
             _file = ./.;
-            nixpkgs.pkgs = liteSystemPkgs;
+            nixpkgs.pkgs = liteConfigPkgs;
             networking.hostName = hostName;
           }
         ]
@@ -321,11 +321,11 @@ toplevel @ {
     };
 in {
   options = {
-    lite-system = mkOption {
-      type = liteSystemType;
+    lite-config = mkOption {
+      type = liteConfigType;
       default = {};
       description = ''
-        The config for lite-system.
+        The config for lite-config.
       '';
     };
   };
@@ -338,7 +338,7 @@ in {
 
     perSystem = {
       system,
-      liteSystemPkgs,
+      liteConfigPkgs,
       ...
     }: {
       _file = ./.;
@@ -350,21 +350,21 @@ in {
         };
       in {
         # Make this OptionDefault so that users are able to override this pkg.
-        _module.args.liteSystemPkgs = lib.mkOptionDefault selectedPkgs;
+        _module.args.liteConfigPkgs = lib.mkOptionDefault selectedPkgs;
 
-        _module.args.pkgs = lib.mkIf cfg.nixpkgs.setPerSystemPkgs liteSystemPkgs;
+        _module.args.pkgs = lib.mkIf cfg.nixpkgs.setPerSystemPkgs liteConfigPkgs;
 
         packages = let
           overlayPackages = let
-            overlayFn = lib.composeManyExtensions liteSystemPkgs.overlays;
+            overlayFn = lib.composeManyExtensions liteConfigPkgs.overlays;
             overlayPackageNames =
               # Here we use the final pkgs as both prev and final arg for the overlay function.
               # This should be fine because we only care about attr names.
-              attrNames (overlayFn liteSystemPkgs liteSystemPkgs);
+              attrNames (overlayFn liteConfigPkgs liteConfigPkgs);
             overlayPackageEntries =
               map (name: {
                 inherit name;
-                value = liteSystemPkgs.${name} or null;
+                value = liteConfigPkgs.${name} or null;
               })
               overlayPackageNames;
             # Some overlay provides non-derivation at the top level, which
@@ -377,7 +377,7 @@ in {
 
           homeManagerPackages = {
             home-manager = cfg.homeManagerFlake.packages.${system}.default;
-            homeConfigurations = createHomeConfigurations liteSystemPkgs;
+            homeConfigurations = createHomeConfigurations liteConfigPkgs;
           };
         in
           mkMerge [
