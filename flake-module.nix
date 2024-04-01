@@ -142,18 +142,19 @@ toplevel @ {
         '';
       };
 
-      systemModule = mkOption {
-        type = types.nullOr types.deferredModule;
+      systemModules = mkOption {
+        type = types.listOf types.deferredModule;
+        default = [];
         description = ''
-          The system module to be imported by all hosts.
+          Shared system modules (NixOS or nix-darwin) to be imported by all hosts.
         '';
       };
 
-      homeModule = mkOption {
-        type = types.nullOr types.deferredModule;
-        default = null;
+      homeModules = mkOption {
+        type = types.listOf types.deferredModule;
+        default = [];
         description = ''
-          The home manager module to be imported by all hosts.
+          Home manager modules to be imported by all hosts.
         '';
       };
 
@@ -190,7 +191,7 @@ toplevel @ {
           The home-manager flake to use.
           This should be set if home-manager isn't named as `home-manager` in flake inputs.
 
-          This has no effect if {option}`lite-config.homeModule` is null.
+          This has no effect if {option}`lite-config.homeModules` is empty.
         '';
       };
 
@@ -201,10 +202,10 @@ toplevel @ {
           Per-user Home Manager module used for exporting homeConfigurations to be used
           by systems other than NixOS and nix-darwin.
 
-          The exported homeConfigurations will import both `lite-config.homeModule` and the value of
+          The exported homeConfigurations will import `lite-config.homeModules` and the value of
           this attrset.
 
-          This has no effect if {option}`lite-config.homeModule` is null.
+          This has no effect if {option}`lite-config.homeModules` is empty.
         '';
         example =
           literalExpression
@@ -221,7 +222,7 @@ toplevel @ {
     };
   };
 
-  useHomeManager = cfg.homeModule != null;
+  useHomeManager = cfg.homeModules != [];
 
   makeSystemConfig = hostName: hostConfig:
     withSystem hostConfig.system ({liteConfigPkgs, ...}: let
@@ -242,21 +243,19 @@ toplevel @ {
       modules =
         [
           hostModule
-          cfg.systemModule
           {
             _file = ./.;
             nixpkgs.pkgs = liteConfigPkgs;
             networking.hostName = hostName;
           }
         ]
+        ++ cfg.systemModules
         ++ lib.optionals useHomeManager [
           homeManagerSystemModule
           {
             _file = ./.;
             home-manager = {
-              sharedModules = [
-                cfg.homeModule
-              ];
+              sharedModules = cfg.homeModules;
               useGlobalPkgs = true;
               extraSpecialArgs = specialArgs;
             };
@@ -283,23 +282,24 @@ toplevel @ {
   mkHomeConfiguration = pkgs: username: module:
     cfg.homeManagerFlake.lib.homeManagerConfiguration {
       inherit pkgs;
-      modules = [
-        cfg.homeModule
-        module
-        ({config, ...}: let
-          hostPlatform = pkgs.stdenv.hostPlatform;
-          defaultHome =
-            if hostPlatform.isLinux
-            then "/home/${config.home.username}"
-            else if hostPlatform.isDarwin
-            then "/Users/${config.home.username}"
-            else throw "System type ${hostPlatform.system} not supported.";
-        in {
-          _file = ./.;
-          home.username = mkDefault username;
-          home.homeDirectory = mkDefault defaultHome;
-        })
-      ];
+      modules =
+        [
+          module
+          ({config, ...}: let
+            hostPlatform = pkgs.stdenv.hostPlatform;
+            defaultHome =
+              if hostPlatform.isLinux
+              then "/home/${config.home.username}"
+              else if hostPlatform.isDarwin
+              then "/Users/${config.home.username}"
+              else throw "System type ${hostPlatform.system} not supported.";
+          in {
+            _file = ./.;
+            home.username = mkDefault username;
+            home.homeDirectory = mkDefault defaultHome;
+          })
+        ]
+        ++ cfg.homeModules;
 
       extraSpecialArgs = {
         inherit inputs;

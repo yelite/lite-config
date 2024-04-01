@@ -49,10 +49,10 @@ An example:
           ];
         };
 
-        # The system module will be imported for all host configurations.
-        systemModule = ./system;
-        # The home module is a Home Manager module, used by all host configurations.
-        homeModule = ./home;
+        # System modules will be imported for all host configurations.
+        systemModules = [ ./system ];
+        # Home modules are imported by Home Manager in all host configurations.
+        homeModules = [ ./home ];
         # This directory contains per-host system module.
         hostModuleDir = ./hosts;
 
@@ -161,10 +161,10 @@ have more complex tasks to accomplish within the flake.
           darwin = inputs.nix-darwin.lib.darwinSystem;
         };
 
-        # The system module will be imported for all host configurations.
-        systemModule = ./system;
-        # The home module is a Home Manager module, used by all host configurations.
-        homeModule = ./home;
+        # System modules will be imported for all host configurations.
+        systemModules = [ ./system ];
+        # Home modules are imported by Home Manager in all host configurations.
+        homeModules = [ ./home ];
         # This directory contains per-host system module.
         hostModuleDir = ./hosts;
 
