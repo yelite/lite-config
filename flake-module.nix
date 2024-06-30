@@ -55,7 +55,7 @@ toplevel @ {
       };
       overlays = mkOption {
         default = [];
-        type = types.uniq (types.listOf overlayType);
+        type = types.listOf overlayType;
         description = ''
           List of overlays to use with the Nix Packages collection.
         '';
