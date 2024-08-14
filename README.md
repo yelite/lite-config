@@ -146,6 +146,14 @@ have more complex tasks to accomplish within the flake.
           # Whether the nixpkgs used in lite-config should also be set as the `pkgs` arg for
           # the perSystem module.
           setPerSystemPkgs = true;
+          # Useful for using a pinned nixpkgs for a particular platform. To
+          # workaround broken packages in the latest commit.
+          perSystemOverrides = {
+            "aarch64-darwin" = {
+              nixpkgs = inputs.nixpkgs-darwin;
+              config = {};
+            };
+          };
         };
 
         # The home-manager flake to use.

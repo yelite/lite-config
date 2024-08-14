@@ -53,6 +53,44 @@ toplevel @ {
             { allowUnfree = true; }
           '';
       };
+      perSystemOverrides = mkOption {
+        default = {};
+        type = types.attrsOf (types.submodule {
+          options = {
+            nixpkgs = mkOption {
+              type = types.path;
+              default = inputs.nixpkgs;
+              defaultText = literalExpression "inputs.nixpkgs";
+              description = ''
+                The nixpkgs flake to use for this system.
+              '';
+            };
+            config = mkOption {
+              default = {};
+              type = types.attrs;
+              description = ''
+                The configuration of the Nix Packages collection for this system.
+              '';
+              example =
+                literalExpression
+                ''
+                  { allowUnfree = true; }
+                '';
+            };
+          };
+        });
+        description = ''
+          Overrides for the nixpkgs used in a particular system. Useful for choosing
+          a pinned nixpkgs commit for some platform.
+        '';
+        example =
+          literalExpression
+          ''
+            {
+              "aarch64-darwin" = inputs.nixpkgs-darwin;
+            }
+          '';
+      };
       overlays = mkOption {
         default = [];
         type = types.listOf overlayType;
@@ -343,7 +381,8 @@ in {
     }: {
       _file = ./.;
       config = let
-        selectedPkgs = import cfg.nixpkgs.nixpkgs {
+        systemNixpkgs = cfg.nixpkgs.perSystemOverrides.${system} or cfg.nixpkgs;
+        selectedPkgs = import systemNixpkgs.nixpkgs {
           inherit system;
           overlays = cfg.nixpkgs.overlays;
           config = cfg.nixpkgs.config;
