@@ -82,6 +82,10 @@ toplevel @ {
         description = ''
           Overrides for the nixpkgs used in a particular system. Useful for choosing
           a pinned nixpkgs commit for some platform.
+
+          It's not suggested to keep using a pinned nixpkgs for a system in the long run.
+          Doing so will only deviate environments on your different machines, eventually
+          making the system with pinned nixpkgs failed to build.
         '';
         example =
           literalExpression
