@@ -264,7 +264,7 @@ toplevel @ {
     };
   };
 
-  useHomeManager = cfg.homeModules != [];
+  useHomeManager = cfg.homeModules != [] || cfg.homeConfigurations != {};
 
   makeSystemConfig = hostName: hostConfig:
     withSystem hostConfig.system ({liteConfigPkgs, ...}: let
