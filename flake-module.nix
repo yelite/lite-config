@@ -162,6 +162,22 @@
         '';
       };
 
+      nixosModules = mkOption {
+        type = types.listOf types.deferredModule;
+        default = [];
+        description = ''
+          Shared NixOS modules to be imported by all hosts.
+        '';
+      };
+
+      darwinModules = mkOption {
+        type = types.listOf types.deferredModule;
+        default = [];
+        description = ''
+          Shared nix-darwin modules to be imported by all hosts.
+        '';
+      };
+
       hosts = mkOption {
         type = types.attrsOf hostConfigType;
         default = {};
@@ -210,6 +226,12 @@
         else if hostPlatform.isDarwin
         then cfg.flakes.home-manager.darwinModules.default
         else throw "System type ${hostPlatform.system} not supported.";
+      platformModules =
+        if hostPlatform.isLinux
+        then cfg.nixosModules
+        else if hostPlatform.isDarwin
+        then cfg.darwinModules
+        else throw "System type ${hostPlatform.system} not supported.";
       specialArgs = {
         inherit inputs hostPlatform;
       };
@@ -223,6 +245,7 @@
             networking.hostName = hostName;
           }
         ]
+        ++ platformModules
         ++ [
           homeManagerSystemModule
           {
@@ -244,7 +267,7 @@
       then {darwinConfigurations.${hostName} = cfg.flakes.nix-darwin.lib.darwinSystem builderArgs;}
       else throw "System type ${hostPlatform.system} not supported.");
 
-  mkHomeConfiguration = pkgs: username: homeConfig:
+  mkHomeConfiguration = pkgs: configName: homeConfig:
     cfg.flakes.home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
       modules =
@@ -260,11 +283,10 @@
               then "/Users/${config.home.username}"
               else throw "System type ${hostPlatform.system} not supported.";
             # if username has an @, use the part before the @
-            matches = lib.strings.match "([^@]*)@.*" username;
-          in let
+            matches = lib.strings.match "([^@]*)@.*" configName;
             username =
-              if matches == []
-              then username
+              if matches == null
+              then configName
               else builtins.head matches;
           in {
             _file = ./.;
